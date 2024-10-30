@@ -1,0 +1,348 @@
+<html><head><base href="." />
+<style>
+    body {
+        background-color: #090909;
+        color: #d6dcdc;
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 20px;
+        display: flex;
+        height: 100vh;
+    }
+
+    .container {
+        display: flex;
+        gap: 20px;
+        width: 100%;
+        position: relative;
+    }
+
+    .grid-container {
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+        background: #111111;
+        border: 1px solid #1e1e1e;
+        border-radius: 8px;
+        height: 425px;
+        position: relative;
+    }
+
+    .grid {
+        display: grid;
+        grid-template-columns: repeat(16, 1fr);
+        flex: 1;
+        width: 100%;
+    }
+
+    .grid-cell {
+        border: 1px solid #1e1e1e;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+
+    .grid-cell:hover {
+        background: #1e1e1e;
+    }
+
+    .grid-cell.active {
+        background: #d6dcdc;
+    }
+
+    .measure-markers {
+        display: flex;
+        justify-content: space-between;
+        margin-right: 22%;
+        padding: 5px;
+    }
+
+    .controls {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        display: flex;
+        gap: 10px;
+    }
+
+    button {
+        background: #111111;
+        color: orange;
+        border: 1px solid #1e1e1e;
+        padding: 5px 10px;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+
+    button:hover {
+        background: #1e1e1e;
+    }
+
+    .menu-button {
+        position: absolute;
+        bottom: 10px;
+        left: 10px;
+        z-index: 2;
+        color: orange;
+    }
+
+    .side-menu {
+        position: absolute;
+        left: -100%;
+        top: 0;
+        width: 40%;
+        height: 100%;
+        background: #111111;
+        border-right: 1px solid #1e1e1e;
+        transition: left 0.3s ease-in-out;
+        padding: 20px;
+        box-sizing: border-box;
+        z-index: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .side-menu.open {
+        left: 0;
+    }
+
+    .side-menu button {
+        width: 100%;
+        padding: 10px;
+    }
+
+    .scale-selector {
+        margin-top: 10px;
+    }
+
+    select {
+        width: 100%;
+        padding: 8px;
+        background: #111111;
+        color: #d6dcdc;
+        border: 1px solid #1e1e1e;
+        margin-top: 5px;
+    }
+
+    select:focus {
+        outline: none;
+        border-color: #d6dcdc;
+    }
+
+    .slider-container {
+        margin-top: 10px;
+    }
+
+    .slider {
+        -webkit-appearance: none;
+        width: 100%;
+        height: 8px;
+        background: #1e1e1e;
+        border-radius: 4px;
+        outline: none;
+    }
+
+    .slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 16px;
+        height: 16px;
+        background: #d6dcdc;
+        border-radius: 50%;
+        cursor: pointer;
+    }
+
+    .slider::-moz-range-thumb {
+        width: 16px;
+        height: 16px;
+        background: #d6dcdc;
+        border-radius: 50%;
+        cursor: pointer;
+    }
+
+    .slider-value {
+        text-align: right;
+        margin-top: 5px;
+        font-size: 0.9em;
+    }
+</style>
+</head>
+<body>
+<div class="container">
+    <div class="grid-container">
+        <div class="side-menu" id="sideMenu">
+            <p style="font-size:10px;opacity:0.5;">MELODY MAKERv1.0</p>
+            <h2 style="margin-top:0px;">Controls</h2>
+            <button id="clearButton">Clear Grid</button>
+            <div class="scale-selector">
+                <label for="scaleSelect">Select Scale:</label>
+                <select id="scaleSelect">
+                    <option value="chromatic">Chromatic (All Notes)</option>
+                    <option value="cmajor">C Major</option>
+                    <option value="cminor">C Minor</option>
+                    <option value="fmajor">F Major</option>
+                    <option value="gmajor">G Major</option>
+                    <option value="aminor">A Minor</option>
+                </select>
+            </div>
+            <button id="randomButton">Randomize Notes</button>
+            <div class="slider-container">
+                <label for="decaySlider">Note Decay (seconds):</label>
+                <input type="range" min="0.05" max="0.2" step="0.01" value="0.1" class="slider" id="decaySlider">
+                <div class="slider-value" id="decayValue">0.1s</div>
+            </div>
+        </div>
+        <div class="measure-markers">
+            <span>1</span>
+            <span>2</span>
+            <span>3</span>
+            <span>4</span>
+        </div>
+        <div class="grid" id="grid"></div>
+        <button class="menu-button" id="menuButton">☰</button>
+    </div>
+</div>
+<div class="controls">
+    <button id="playButton">►</button>
+    <button id="pauseButton">⏸</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+<script>
+    const notes = ['C5', 'B4', 'Bb4', 'A4', 'Ab4', 'G4', 'Gb4', 'F4', 'E4', 'Eb4', 'D4', 'Db4', 'C4', 'B3', 'Bb3', 'A3', 'Ab3', 'G3', 'Gb3', 'F3', 'E3', 'Eb3', 'D3', 'Db3', 'C3'];
+    
+    const scales = {
+        chromatic: notes,
+        cmajor: ['C5', 'B4', 'A4', 'G4', 'F4', 'E4', 'D4', 'C4', 'B3', 'A3', 'G3', 'F3', 'E3', 'D3', 'C3'],
+        cminor: ['C5', 'Bb4', 'Ab4', 'G4', 'F4', 'Eb4', 'D4', 'C4', 'Bb3', 'Ab3', 'G3', 'F3', 'Eb3', 'D3', 'C3'],
+        fmajor: ['C5', 'Bb4', 'A4', 'G4', 'F4', 'E4', 'D4', 'C4', 'Bb3', 'A3', 'G3', 'F3', 'E3', 'D3', 'C3'],
+        gmajor: ['C5', 'B4', 'A4', 'G4', 'F4', 'E4', 'D4', 'C4', 'B3', 'A3', 'G3', 'F3', 'E3', 'D3', 'C3'],
+        aminor: ['C5', 'B4', 'A4', 'G4', 'F4', 'E4', 'D4', 'C4', 'B3', 'A3', 'G3', 'F3', 'E3', 'D3', 'C3']
+    };
+
+    const grid = document.getElementById('grid');
+    let isPlaying = false;
+    let currentColumn = 0;
+    let interval;
+
+    // Create grid cells
+    notes.forEach((note) => {
+        for (let j = 0; j < 16; j++) {
+            const cell = document.createElement('div');
+            cell.className = 'grid-cell';
+            cell.setAttribute('data-note', note);
+            cell.setAttribute('data-column', j);
+            grid.appendChild(cell);
+        }
+    });
+
+    // Initialize Tone.js with PolySynth
+    const synth = new Tone.PolySynth(Tone.Synth, {
+        envelope: {
+            attack: 0.01,
+            decay: 0.1,
+            sustain: 0.3,
+            release: 0.2
+        }
+    }).toDestination();
+
+    // Decay slider functionality
+    const decaySlider = document.getElementById('decaySlider');
+    const decayValue = document.getElementById('decayValue');
+
+    decaySlider.addEventListener('input', (e) => {
+        const value = e.target.value;
+        decayValue.textContent = value + 's';
+        synth.set({
+            envelope: {
+                decay: parseFloat(value)
+            }
+        });
+    });
+
+    // Handle grid cell clicks
+    grid.addEventListener('click', (e) => {
+        if (e.target.classList.contains('grid-cell')) {
+            e.target.classList.toggle('active');
+        }
+    });
+
+    // Play/Pause functionality
+    const playButton = document.getElementById('playButton');
+    const pauseButton = document.getElementById('pauseButton');
+
+    playButton.addEventListener('click', () => {
+        if (!isPlaying) {
+            isPlaying = true;
+            currentColumn = 0;
+            Tone.start();
+            if (interval) clearInterval(interval);
+            interval = setInterval(playColumn, 250);
+        }
+    });
+
+    pauseButton.addEventListener('click', () => {
+        isPlaying = false;
+        if (interval) clearInterval(interval);
+        document.querySelectorAll('.grid-cell').forEach(cell => {
+            cell.style.background = '';
+        });
+    });
+
+    function playColumn() {
+        if (!isPlaying) return;
+
+        const activeCells = document.querySelectorAll(`.grid-cell[data-column="${currentColumn}"].active`);
+        const notesToPlay = Array.from(activeCells).map(cell => cell.getAttribute('data-note'));
+        
+        if (notesToPlay.length > 0) {
+            const decay = parseFloat(decaySlider.value);
+            synth.triggerAttackRelease(notesToPlay, decay);
+        }
+
+        document.querySelectorAll('.grid-cell').forEach(cell => {
+            cell.style.background = '';
+        });
+
+        document.querySelectorAll(`.grid-cell[data-column="${currentColumn}"]`).forEach(cell => {
+            cell.style.background = '#1e1e1e';
+        });
+
+        currentColumn = (currentColumn + 1) % 16;
+    }
+
+    // Clear and Random functionality
+    const clearButton = document.getElementById('clearButton');
+    const randomButton = document.getElementById('randomButton');
+
+    clearButton.addEventListener('click', () => {
+        document.querySelectorAll('.grid-cell.active').forEach(cell => {
+            cell.classList.remove('active');
+        });
+    });
+
+    randomButton.addEventListener('click', () => {
+        clearButton.click();
+        const selectedScale = document.getElementById('scaleSelect').value;
+        const availableNotes = scales[selectedScale];
+        
+        const cells = document.querySelectorAll('.grid-cell');
+        cells.forEach(cell => {
+            if (Math.random() < 0.15) {
+                const cellNote = cell.getAttribute('data-note');
+                if (availableNotes.includes(cellNote)) {
+                    cell.classList.add('active');
+                }
+            }
+        });
+    });
+
+    // Side menu functionality
+    const menuButton = document.getElementById('menuButton');
+    const sideMenu = document.getElementById('sideMenu');
+
+    menuButton.addEventListener('click', () => {
+        sideMenu.classList.toggle('open');
+    });
+</script>
+</body></html>
