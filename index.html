@@ -100,8 +100,16 @@
         display: flex;
         flex-direction: column;
         gap: 10px;
+        overflow: auto;
     }
 
+    @media (max-width:780px){
+      .side-menu {
+        width:100%
+        
+      }
+    }
+  
     .side-menu.open {
         left: 0;
     }
@@ -191,6 +199,11 @@
                 <input type="range" min="0.05" max="0.2" step="0.01" value="0.1" class="slider" id="decaySlider">
                 <div class="slider-value" id="decayValue">0.1s</div>
             </div>
+            <div class="slider-container">
+                <label for="releaseSlider">Note Release (seconds):</label>
+                <input type="range" min="0.05" max="5.0" step="0.01" value="0.1" class="slider" id="releaseSlider">
+                <div class="slider-value" id="releaseValue">0.1s</div>
+            </div>
         </div>
         <div class="measure-markers">
             <span>1</span>
@@ -242,13 +255,15 @@
             attack: 0.01,
             decay: 0.1,
             sustain: 0.3,
-            release: 0.2
+            release: 0.1
         }
     }).toDestination();
 
-    // Decay slider functionality
+    // Decay and Release slider functionality
     const decaySlider = document.getElementById('decaySlider');
     const decayValue = document.getElementById('decayValue');
+    const releaseSlider = document.getElementById('releaseSlider');
+    const releaseValue = document.getElementById('releaseValue');
 
     decaySlider.addEventListener('input', (e) => {
         const value = e.target.value;
@@ -256,6 +271,16 @@
         synth.set({
             envelope: {
                 decay: parseFloat(value)
+            }
+        });
+    });
+
+    releaseSlider.addEventListener('input', (e) => {
+        const value = e.target.value;
+        releaseValue.textContent = value + 's';
+        synth.set({
+            envelope: {
+                release: parseFloat(value)
             }
         });
     });
@@ -297,6 +322,13 @@
         
         if (notesToPlay.length > 0) {
             const decay = parseFloat(decaySlider.value);
+            const release = parseFloat(releaseSlider.value);
+            synth.set({
+                envelope: {
+                    decay: decay,
+                    release: release
+                }
+            });
             synth.triggerAttackRelease(notesToPlay, decay);
         }
 
